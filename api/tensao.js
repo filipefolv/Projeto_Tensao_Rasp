@@ -1,28 +1,35 @@
 // api/tensao.js
-export default function handler(req, res) {
-    // Configura o CORS
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Permite requisições de qualquer origem
-    res.setHeader('Access-Control-Allow-Methods', 'POST'); // Permite apenas POST
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type'); // Permite cabeçalhos Content-Type
+let lastData = null; // Armazena os últimos dados recebidos
 
-    if (req.method === 'POST') {
-        // Recebe os dados da Raspberry Pi
-        const { tensao, corrente, potencia, tensao_shunt } = req.body;
+export default async function handler(req, res) {
+  // Configura CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-        // Exibe os dados no console (para depuração)
-        console.log(`Dados recebidos:`);
-        console.log(`- Tensão: ${tensao} V`);
-        console.log(`- Corrente: ${corrente} mA`);
-        console.log(`- Potência: ${potencia} mW`);
-        console.log(`- Tensão do Shunt: ${tensao_shunt} mV`);
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
-        // Retorna uma resposta de sucesso
-        res.status(200).json({ message: 'Dados recebidos com sucesso!' });
-    } else if (req.method === 'OPTIONS') {
-        // Responde a requisições OPTIONS (pré-voo do CORS)
-        res.status(200).end();
-    } else {
-        // Retorna um erro 405 para métodos não permitidos
-        res.status(405).json({ message: 'Método não permitido' });
+  // POST (recebe dados da Raspberry Pi)
+  if (req.method === 'POST') {
+    try {
+      lastData = req.body; // Armazena os dados
+      console.log('📊 Dados recebidos:', lastData);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('❌ Erro:', error);
+      return res.status(500).json({ error: 'Erro no servidor' });
     }
+  }
+
+  // GET (entrega dados para o front-end)
+  if (req.method === 'GET') {
+    return res.status(200).json(lastData || { 
+      message: 'Aguardando primeira leitura...' 
+    });
+  }
+
+  return res.status(405).json({ error: 'Método não permitido' });
 }
