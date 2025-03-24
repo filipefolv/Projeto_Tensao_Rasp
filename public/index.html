@@ -1,67 +1,146 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor de Tensão</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
-        }
-        h1 {
-            color: #333;
-        }
-        .data {
-            font-size: 1.5em;
-            color: #007BFF;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-        .error {
-            color: red;
-            font-weight: bold;
-        }
-    </style>
+  <title>Monitor de Tensão em Tempo Real</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .chart-container {
+      margin: 30px 0;
+      position: relative;
+      height: 300px;
+    }
+    .status {
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
-
 <body>
-    <h1>Última Leitura</h1>
-    <div id="data">
-      <p>Aguardando dados...</p>
-    </div>
-  
-    <script>
-        async function fetchData() {
-            try {
-                const response = await fetch('https://projeto-tensao-rasp.vercel.app/api/tensao');
-                const data = await response.json();
-                
-                // Verifica se há dados válidos
-                if (data.tensao !== undefined && data.corrente !== undefined && data.potencia !== undefined && data.tensao_shunt !== undefined) {
-                    document.getElementById('data').innerHTML = `
-                    <div class="data"><strong>Tensão:</strong> ${data.tensao.toFixed(2)} V</div>
-                    <div class="data"><strong>Corrente:</strong> ${data.corrente.toFixed(2)} mA</div>
-                    <div class="data"><strong>Potência:</strong> ${data.potencia.toFixed(2)} mW</div>
-                    <div class="data"><strong>Shunt:</strong> ${data.tensao_shunt.toFixed(2)} mV</div>
-                    `;
-                } else {
-                    document.getElementById('data').innerHTML = `
-                    <div class="data">${data.message || 'Dados não disponíveis'}</div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Erro:', error);
-                document.getElementById('data').innerHTML = `
-                    <div class="data error">Erro ao carregar dados</div>
-                `;
-            }
+  <h1>Monitor de Tensão em Tempo Real</h1>
+  <div class="status" id="status">Conectando...</div>
+
+  <div class="chart-container">
+    <canvas id="tensaoChart"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <canvas id="correnteChart"></canvas>
+  </div>
+
+  <div class="chart-container">
+    <canvas id="potenciaChart"></canvas>
+  </div>
+
+  <script>
+    // Configuração inicial
+    const MAX_DATA_POINTS = 20;
+    let history = {
+      labels: [],
+      tensao: [],
+      corrente: [],
+      potencia: [],
+      tensao_shunt: []
+    };
+
+    // Elementos do DOM
+    const statusElement = document.getElementById('status');
+
+    // Inicializa gráficos
+    const tensaoChart = createChart('tensaoChart', 'Tensão (V)', 'rgba(54, 162, 235, 1)');
+    const correnteChart = createChart('correnteChart', 'Corrente (mA)', 'rgba(255, 99, 132, 1)');
+    const potenciaChart = createChart('potenciaChart', 'Potência (mW)', 'rgba(75, 192, 192, 1)');
+
+    // Função para criar gráficos
+    function createChart(id, label, color) {
+      const ctx = document.getElementById(id).getContext('2d');
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: label,
+            data: [],
+            borderColor: color,
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: false }
+          },
+          animation: {
+            duration: 0 // Desativa animações para atualização em tempo real
+          }
         }
+      });
+    }
+
+    // Atualiza todos os gráficos
+    function updateCharts(newData) {
+      const timestamp = new Date().toLocaleTimeString();
       
-        // Atualiza a cada 2 segundos
-        setInterval(fetchData, 2000);
-        fetchData();
-    </script>
-  </body>
+      // Adiciona novos dados ao histórico
+      history.labels.push(timestamp);
+      history.tensao.push(newData.tensao);
+      history.corrente.push(newData.corrente);
+      history.potencia.push(newData.potencia);
+      
+      // Limita o histórico ao número máximo de pontos
+      if (history.labels.length > MAX_DATA_POINTS) {
+        history.labels.shift();
+        history.tensao.shift();
+        history.corrente.shift();
+        history.potencia.shift();
+      }
+      
+      // Atualiza gráficos
+      updateChart(tensaoChart, history.labels, history.tensao);
+      updateChart(correnteChart, history.labels, history.corrente);
+      updateChart(potenciaChart, history.labels, history.potencia);
+    }
+
+    function updateChart(chart, labels, data) {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = data;
+      chart.update();
+    }
+
+    // Busca dados da API
+    async function fetchData() {
+      try {
+        const response = await fetch('https://projeto-tensao-rasp.vercel.app/api/tensao');
+        const data = await response.json();
+        
+        if (data.tensao !== undefined) {
+          statusElement.textContent = `Última leitura: ${new Date().toLocaleTimeString()}`;
+          statusElement.style.color = 'green';
+          updateCharts(data);
+        } else {
+          statusElement.textContent = 'Aguardando dados...';
+          statusElement.style.color = 'orange';
+        }
+      } catch (error) {
+        console.error('Erro:', error);
+        statusElement.textContent = 'Erro ao conectar na API';
+        statusElement.style.color = 'red';
+      }
+    }
+
+    // Atualiza a cada 1 segundo
+    setInterval(fetchData, 1000);
+    fetchData(); // Primeira chamada
+  </script>
+</body>
 </html>
