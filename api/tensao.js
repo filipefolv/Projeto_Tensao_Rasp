@@ -15,8 +15,11 @@ export default async function handler(req, res) {
   // POST (recebe dados da Raspberry Pi)
   if (req.method === 'POST') {
     try {
-      lastData = req.body; // Armazena os dados
-      console.log('📊 Dados recebidos:', lastData);
+      const receivedData = {
+        ...req.body,
+        timestamp: Date.now() // Adiciona timestamp atual
+      };
+      lastData = receivedData;
       return res.status(200).json({ success: true });
     } catch (error) {
       console.error('❌ Erro:', error);
