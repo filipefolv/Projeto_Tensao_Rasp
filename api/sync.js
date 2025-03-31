@@ -1,7 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 
 export default async function handler(req, res) {
-  // Configuração de CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,33 +13,35 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
-  // Validação do payload
   if (!req.body?.leituras || !Array.isArray(req.body.leituras)) {
     return res.status(400).json({ error: 'Formato de dados inválido' });
   }
 
   const sql = neon(process.env.DATABASE_URL);
-  const batchSize = 10; // Tamanho do lote reduzido
+  const batchSize = 10;
   let insertedCount = 0;
 
   try {
-    // Processamento em lotes
     for (let i = 0; i < req.body.leituras.length; i += batchSize) {
       const batch = req.body.leituras.slice(i, i + batchSize);
-      
-      // Construção da query com sintaxe de template tag
+
+      // Usar uma única tagged template com valores diretos
+      const values = batch.map(leitura => [
+        leitura.timestamp,
+        leitura.tensao,
+        leitura.device_id || 'raspberry-01',
+        true
+      ]);
+
+      const placeholders = batch.map((_, idx) => 
+        `($${idx * 4 + 1}::timestamptz, $${idx * 4 + 2}::float, $${idx * 4 + 3}::text, $${idx * 4 + 4})`
+      ).join(', ');
+
       const result = await sql`
         INSERT INTO leituras (timestamp, tensao, device_id, sync_status)
-        VALUES ${sql(batch.map(leitura => 
-          sql`(
-            ${leitura.timestamp}::timestamptz, 
-            ${leitura.tensao}::float, 
-            ${leitura.device_id || 'raspberry-01'}::text, 
-            TRUE
-          )`
-        ))}
+        VALUES ${sql.unsafe(placeholders)}
         RETURNING id
-      `;
+      `.apply(null, values.flat());
 
       insertedCount += result.length;
     }
