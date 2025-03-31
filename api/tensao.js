@@ -6,15 +6,19 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   const sql = neon(process.env.DATABASE_URL);
 
   try {
     if (req.method === 'POST') {
-      const { tensao, device_id = 'raspberry-01' } = req.body;
+      const { tensao, timestamp } = req.body;
       
       await sql`
-        INSERT INTO leitures (tensao, device_id, sync_status)
-        VALUES (${tensao}, ${device_id}, true)
+        INSERT INTO leituras (timestamp, tensao, sync_status)
+        VALUES (${timestamp}, ${tensao}, true)
       `;
       
       return res.status(200).json({ success: true });
@@ -24,7 +28,6 @@ export default async function handler(req, res) {
       const result = await sql`
         SELECT timestamp, tensao 
         FROM leituras 
-        WHERE sync_status = true
         ORDER BY timestamp DESC 
         LIMIT 100
       `;
