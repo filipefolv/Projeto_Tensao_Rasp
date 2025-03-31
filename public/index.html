@@ -1,49 +1,65 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Monitor de Tensão com Backup</title>
+  <title>Monitor de Tensão</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* (Mantido igual ao anterior) */
-    .offline-warning {
-      background-color: #fff3cd;
-      color: #856404;
-      padding: 10px;
-      border-radius: 4px;
-      margin: 10px 0;
+    /* (Mantido igual à versão anterior) */
+    .data-status {
+      font-size: 0.9em;
+      color: #666;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <!-- (Cabeçalho mantido) -->
-  
-  <div id="offlineAlert" class="offline-warning" style="display:none">
-    ⚠️ Dados podem estar incompletos (Raspberry offline)
+  <h1>Monitor de Tensão</h1>
+  <div class="status-panel">
+    <div id="currentValue">0.00</div>
+    <div class="data-status" id="dataStatus">Carregando...</div>
+  </div>
+  <div class="chart-container">
+    <canvas id="tensaoChart"></canvas>
   </div>
 
-  <!-- (Gráfico mantido) -->
-
   <script>
-    // Novo: Verifica status da Raspberry
-    async function checkDeviceStatus() {
+    const ctx = document.getElementById('tensaoChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [{
+        label: 'Tensão (V)',
+        borderColor: 'rgb(75, 192, 192)',
+        data: []
+      }]},
+      options: { responsive: true }
+    });
+
+    async function updateData() {
       try {
-        const response = await fetch('https://seu-projeto.vercel.app/api/status');
+        const response = await fetch('https://projeto-tensao-rasp.vercel.app/api/tensao');
         const data = await response.json();
         
-        if (data.lastSeen) {
-          const mins = Math.floor((Date.now() - new Date(data.lastSeen)) / 60000);
-          if (mins > 5) {
-            document.getElementById('offlineAlert').style.display = 'block';
-          }
+        // Atualiza gráfico
+        chart.data.labels = data.map(item => new Date(item.timestamp).toLocaleTimeString());
+        chart.data.datasets[0].data = data.map(item => item.tensao);
+        chart.update();
+        
+        // Atualiza valor atual
+        if (data.length > 0) {
+          document.getElementById('currentValue').textContent = 
+            `${data[0].tensao.toFixed(2)} V`;
+          document.getElementById('dataStatus').textContent = 
+            `Última atualização: ${new Date(data[0].timestamp).toLocaleString()}`;
         }
-      } catch (e) {
-        console.log("Erro ao verificar status:", e);
+      } catch (error) {
+        console.error('Erro:', error);
+        document.getElementById('dataStatus').textContent = 'Erro ao carregar dados';
       }
     }
 
-    // Atualiza a cada 10 minutos
-    setInterval(checkDeviceStatus, 600000);
-    checkDeviceStatus();
+    // Atualiza a cada 3 segundos
+    setInterval(updateData, 3000);
+    updateData();
   </script>
 </body>
 </html>
