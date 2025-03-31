@@ -1,7 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 
 export default async function handler(req, res) {
-  // Configuração de CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,34 +13,41 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
-  // Validação do payload
   if (!req.body?.leituras || !Array.isArray(req.body.leituras)) {
     return res.status(400).json({ error: 'Formato de dados inválido' });
   }
 
   const sql = neon(process.env.DATABASE_URL);
-  const batchSize = 10; // Tamanho do lote reduzido
+  const batchSize = 10;
   let insertedCount = 0;
 
   try {
-    // Processamento em lotes
     for (let i = 0; i < req.body.leituras.length; i += batchSize) {
       const batch = req.body.leituras.slice(i, i + batchSize);
-      
-      // Construção da query com sintaxe de template tag
-      const result = await sql`
+
+      const values = [];
+      const placeholders = [];
+
+      batch.forEach((leitura, idx) => {
+        const baseIdx = idx * 4;
+        placeholders.push(
+          `($${baseIdx + 1}, $${baseIdx + 2}, $${baseIdx + 3}, $${baseIdx + 4})`
+        );
+        values.push(
+          leitura.timestamp,
+          leitura.tensao,
+          leitura.device_id || 'raspberry-01',
+          true
+        );
+      });
+
+      const query = `
         INSERT INTO leituras (timestamp, tensao, device_id, sync_status)
-        VALUES ${sql(batch.map(leitura => 
-          sql`(
-            ${leitura.timestamp}::timestamptz, 
-            ${leitura.tensao}::float, 
-            ${leitura.device_id || 'raspberry-01'}::text, 
-            TRUE
-          )`
-        ))}
+        VALUES ${placeholders.join(', ')}
         RETURNING id
       `;
 
+      const result = await sql.query(query, values);
       insertedCount += result.length;
     }
 
@@ -56,7 +62,7 @@ export default async function handler(req, res) {
       stack: error.stack,
       body: req.body
     });
-    
+
     return res.status(500).json({ 
       error: 'Erro no servidor',
       details: error.message
