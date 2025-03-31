@@ -29,26 +29,18 @@ export default async function handler(req, res) {
       const placeholders = [];
 
       batch.forEach((leitura, idx) => {
-        const baseIdx = idx * 4;
-        placeholders.push(
-          `($${baseIdx + 1}, $${baseIdx + 2}, $${baseIdx + 3}, $${baseIdx + 4})`
-        );
-        values.push(
-          leitura.timestamp,
-          leitura.tensao,
-          leitura.device_id || 'raspberry-01',
-          true
-        );
+        const baseIdx = idx * 3;
+        placeholders.push(`($${baseIdx + 1}, $${baseIdx + 2}, $${baseIdx + 3})`);
+        values.push(leitura.timestamp, leitura.tensao, true);
       });
-
+      
       const query = `
-        INSERT INTO leituras (timestamp, tensao, device_id, sync_status)
+        INSERT INTO leituras (timestamp, tensao, sync_status)
         VALUES ${placeholders.join(', ')}
         RETURNING id
       `;
-
+      
       const result = await sql.query(query, values);
-      insertedCount += result.length;
     }
 
     return res.status(200).json({ 
