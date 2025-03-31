@@ -18,13 +18,8 @@
 
     <div class="card shadow-sm">
       <div class="card-body">
-        <canvas id="tensaoChart" style="height:300px;"></canvas>
+        <canvas id="tensaoChart" style="height:400px;"></canvas>
       </div>
-    </div>
-
-    <div class="mt-3">
-      <span class="text-muted">Última leitura: </span>
-      <strong id="currentValue">Carregando...</strong>
     </div>
 
     <div class="mt-3">
@@ -46,33 +41,35 @@
         fill: true,
         data: [],
         tension: 0.3,
-        pointRadius: 3,
+        pointRadius: 2,
       }]
     },
-    options: { responsive: true, maintainAspectRatio: false }
+    options: { 
+      responsive: true, 
+      maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: false }
+      }
+    }
   });
 
   async function updateChart() {
     try {
       const res = await fetch('https://projeto-tensao-rasp.vercel.app/api/tensao');
       const data = await res.json();
-      const reversedData = data.reverse().slice(-20); // últimos 20 pontos
+      const reversedData = data.reverse().slice(-50); // últimos 50 pontos (~4min histórico)
 
       tensaoChart.data.labels = reversedData.map(d => new Date(d.timestamp).toLocaleTimeString());
       tensaoChart.data.datasets[0].data = reversedData.map(d => d.tensao);
       tensaoChart.update();
 
-      document.getElementById('currentValue').textContent = 
-        reversedData[reversedData.length - 1].tensao.toFixed(2) + ' V';
-
     } catch (err) {
       console.error('Erro ao atualizar gráfico:', err);
-      document.getElementById('currentValue').textContent = 'Erro ao carregar dados';
     }
   }
 
   updateChart();
-  setInterval(updateChart, 3000);
+  setInterval(updateChart, 5000); // atualiza a cada 5 segundos
 </script>
 
 </body>
