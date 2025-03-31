@@ -1,38 +1,43 @@
-// api/tensao.js
-let lastData = null; // Armazena os últimos dados recebidos
+import { createClient } from '@vercel/postgres';
 
 export default async function handler(req, res) {
   // Configura CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  // Conexão com PostgreSQL
+  const client = createClient();
+  await client.connect();
 
-  // POST (recebe dados da Raspberry Pi)
-  if (req.method === 'POST') {
-    try {
-      const receivedData = {
-        ...req.body,
-        timestamp: Date.now() // Adiciona timestamp atual
-      };
-      lastData = receivedData;
+  try {
+    // POST - Recebe dados
+    if (req.method === 'POST') {
+      const { tensao } = req.body;
+      const timestamp = new Date().toISOString();
+      
+      await client.query(
+        'INSERT INTO leituras (timestamp, tensao) VALUES ($1, $2)',
+        [timestamp, tensao]
+      );
+      
       return res.status(200).json({ success: true });
-    } catch (error) {
-      console.error('❌ Erro:', error);
-      return res.status(500).json({ error: 'Erro no servidor' });
     }
+
+    // GET - Retorna últimos dados
+    if (req.method === 'GET') {
+      const result = await client.query(
+        'SELECT timestamp, tensao FROM leituras ORDER BY timestamp DESC LIMIT 100'
+      );
+      return res.status(200).json(result.rows);
+    }
+
+  } catch (error) {
+    console.error('Database error:', error);
+    return res.status(500).json({ error: 'Database error' });
+  } finally {
+    await client.end();
   }
 
-  // GET (entrega dados para o front-end)
-  if (req.method === 'GET') {
-    return res.status(200).json(lastData || { 
-      message: 'Aguardando primeira leitura...' 
-    });
-  }
-
-  return res.status(405).json({ error: 'Método não permitido' });
+  return res.status(405).json({ error: 'Method not allowed' });
 }
