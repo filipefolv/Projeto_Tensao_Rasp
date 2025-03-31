@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   }
 
   const sql = neon(process.env.DATABASE_URL);
-  const batchSize = 10;
+  const batchSize = 10; // Reduzindo o lote para evitar timeout
   let insertedCount = 0;
 
   try {
@@ -28,15 +28,14 @@ export default async function handler(req, res) {
     for (let i = 0; i < req.body.leituras.length; i += batchSize) {
       const batch = req.body.leituras.slice(i, i + batchSize);
       
-      // Usando a nova sintaxe de template tag
-      const result = await sql`
+      // Usando a sintaxe correta de template tag
+      const query = sql`
         INSERT INTO leituras (timestamp, tensao, device_id)
-        VALUES ${sql(batch.map(leitura => 
-          sql`(${leitura.timestamp}, ${leitura.tensao}, ${leitura.device_id || 'raspberry-01'})`
-        ))}
+        VALUES ${sql(batch.map(leitura => sql`(${leitura.timestamp}, ${leitura.tensao}, ${leitura.device_id || 'raspberry-01'})`))}
         RETURNING id
       `;
 
+      const result = await query;
       insertedCount += result.length;
     }
 
@@ -46,7 +45,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Erro na sincronização:', error);
+    console.error('Erro na sincronização:', {
+      message: error.message,
+      stack: error.stack
+    });
+    
     return res.status(500).json({ 
       error: 'Erro no servidor',
       details: error.message
