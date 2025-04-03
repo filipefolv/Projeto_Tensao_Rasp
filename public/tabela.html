@@ -7,80 +7,59 @@
 
   <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-
   <!-- DataTables CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.10/css/dataTables.bootstrap5.min.css">
 </head>
 
 <body class="bg-light">
-<div class="container py-4">
-  <h2>Tabela Completa de Leituras</h2>
+  <div class="container py-4">
+    <h2>Tabela Completa de Leituras</h2>
 
-  <div class="row g-2 my-3">
-    <div class="col-md-3"><input type="date" id="dataInicio" class="form-control"></div>
-    <div class="col-md-3"><input type="date" id="dataFim" class="form-control"></div>
-    <div class="col-md-3"><input type="number" step="0.01" id="valorMin" placeholder="Valor mínimo" class="form-control"></div>
-    <div class="col-md-3"><input type="number" step="0.01" id="valorMax" placeholder="Valor máximo" class="form-control"></div>
+    <div class="mb-3">
+      <a href="/" class="btn btn-secondary btn-sm">🏠 Voltar ao gráfico</a>
+    </div>
+
+    <table id="tabelaLeituras" class="table table-striped table-bordered" style="width:100%">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Tensão (V)</th>
+        </tr>
+      </thead>
+    </table>
   </div>
 
-  <button class="btn btn-primary btn-sm mb-3" onclick="carregarDados()">🔍 Aplicar filtro</button>
-  <a href="/" class="btn btn-secondary btn-sm mb-3">🏠 Voltar ao gráfico</a>
+  <!-- jQuery, Bootstrap JS e DataTables JS -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.10/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.10/js/dataTables.bootstrap5.min.js"></script>
 
-  <table id="tabelaLeituras" class="table table-striped table-bordered" style="width:100%">
-    <thead>
-      <tr>
-        <th>Timestamp</th>
-        <th>Tensão (V)</th>
-      </tr>
-    </thead>
-    <tbody>
-    </tbody>
-  </table>
-</div>
-
-<!-- jQuery, Bootstrap JS e DataTables JS -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.10/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.10/js/dataTables.bootstrap5.min.js"></script>
-
-<script>
-let table;
-
-async function carregarDados() {
-  const res = await fetch('https://projeto-tensao-rasp.vercel.app/api/tensao');
-  const dados = await res.json();
-
-  const inicio = new Date(document.getElementById('dataInicio').value);
-  const fim = new Date(document.getElementById('dataFim').value);
-  const min = parseFloat(document.getElementById('valorMin').value);
-  const max = parseFloat(document.getElementById('valorMax').value);
-
-  const filtrado = dados.filter(d => {
-    const data = new Date(d.timestamp);
-    return (!isNaN(inicio) ? data >= inicio : true)
-      && (!isNaN(fim) ? data <= fim : true)
-      && (!isNaN(min) ? d.tensao >= min : true)
-      && (!isNaN(max) ? d.tensao <= max : true);
-  });
-
-  if (table) table.destroy();
-
-  table = $('#tabelaLeituras').DataTable({
-    data: filtrado,
-    columns: [
-      { data: 'timestamp', render: (data) => new Date(data).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) },
-      { data: 'tensao', render: (data) => `${data.toFixed(2)} V` },
-    ],
-    pageLength: 25,  // pode ajustar para exibir mais linhas por página se desejar
-    lengthMenu: [25, 50, 100, 250, 500],
-    order: [[0, 'desc']]
-  });
-}
-
-// Carregar dados automaticamente ao iniciar
-carregarDados();
-</script>
-
+  <script>
+    $(document).ready(function () {
+      $('#tabelaLeituras').DataTable({
+        serverSide: true,
+        processing: true,
+        ajax: {
+          url: 'https://projeto-tensao-rasp.vercel.app/api/tensao_paginar',
+          dataSrc: 'data'
+        },
+        columns: [
+          {
+            data: 'timestamp',
+            render: (data) =>
+              new Date(data).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+          },
+          {
+            data: 'tensao',
+            render: (v) => `${v.toFixed(2)} V`
+          }
+        ],
+        pageLength: 25,
+        lengthMenu: [25, 50, 100, 250, 500],
+        order: [[0, 'desc']]
+      });
+    });
+  </script>
 </body>
 </html>

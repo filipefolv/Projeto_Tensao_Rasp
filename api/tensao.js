@@ -25,11 +25,12 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
+      const limit = parseInt(req.query.limit) || 100;
       const result = await sql`
         SELECT timestamp, tensao 
         FROM leituras 
-        ORDER BY timestamp DESC 
-        LIMIT 100
+        ORDER BY timestamp DESC
+        LIMIT ${limit}
       `;
       return res.status(200).json(result);
     }
