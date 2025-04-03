@@ -19,6 +19,27 @@
       <a href="/" class="btn btn-secondary btn-sm">🏠 Voltar ao gráfico</a>
     </div>
 
+    <div class="row g-2 my-3">
+      <div class="col-md-3">
+        <label class="form-label">Data início</label>
+        <input type="date" id="dataInicio" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Data fim</label>
+        <input type="date" id="dataFim" class="form-control">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Valor mínimo (V)</label>
+        <input type="number" step="0.01" id="valorMin" class="form-control" placeholder="Ex: 12.00">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Valor máximo (V)</label>
+        <input type="number" step="0.01" id="valorMax" class="form-control" placeholder="Ex: 14.00">
+      </div>
+    </div>
+    
+    <button id="aplicarFiltros" class="btn btn-primary btn-sm mb-3">🔍 Aplicar filtros</button>   
+
     <table id="tabelaLeituras" class="table table-striped table-bordered" style="width:100%">
       <thead>
         <tr>
@@ -37,12 +58,17 @@
 
   <script>
     $(document).ready(function () {
-      $('#tabelaLeituras').DataTable({
+      const table = $('#tabelaLeituras').DataTable({
         serverSide: true,
         processing: true,
         ajax: {
           url: 'https://projeto-tensao-rasp.vercel.app/api/tensao_paginar',
-          dataSrc: 'data'
+          data: function (d) {
+            d.dataInicio = $('#dataInicio').val();
+            d.dataFim = $('#dataFim').val();
+            d.valorMin = $('#valorMin').val();
+            d.valorMax = $('#valorMax').val();
+          }
         },
         columns: [
           {
@@ -58,6 +84,10 @@
         pageLength: 25,
         lengthMenu: [25, 50, 100, 250, 500],
         order: [[0, 'desc']]
+      });
+  
+      $('#aplicarFiltros').on('click', function () {
+        table.ajax.reload();
       });
     });
   </script>
