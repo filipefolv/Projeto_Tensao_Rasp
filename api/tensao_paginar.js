@@ -17,48 +17,49 @@ export default async function handler(req, res) {
   const orderByColumn = columnMap[orderColumnIndex] || 'timestamp';
   const sortDirection = orderDir.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
-  // Filtros adicionais
-  const dataInicio = req.query.dataInicio ? new Date(req.query.dataInicio) : null;
-  const dataFim = req.query.dataFim ? new Date(req.query.dataFim) : null;
-  const valorMin = req.query.valorMin ? parseFloat(req.query.valorMin) : null;
-  const valorMax = req.query.valorMax ? parseFloat(req.query.valorMax) : null;
+  const dataInicio = req.query.dataInicio;
+  const dataFim = req.query.dataFim;
+  const valorMin = req.query.valorMin;
+  const valorMax = req.query.valorMax;
 
   let whereClauses = [];
   let values = [];
 
-  if (dataInicio) {
+  if (dataInicio && !isNaN(Date.parse(dataInicio))) {
     whereClauses.push(`timestamp >= $${values.length + 1}`);
-    values.push(dataInicio.toISOString());
+    values.push(dataInicio);
   }
-  if (dataFim) {
+
+  if (dataFim && !isNaN(Date.parse(dataFim))) {
     whereClauses.push(`timestamp <= $${values.length + 1}`);
-    values.push(dataFim.toISOString());
+    values.push(dataFim);
   }
-  if (!isNaN(valorMin)) {
+
+  if (!isNaN(parseFloat(valorMin))) {
     whereClauses.push(`tensao >= $${values.length + 1}`);
-    values.push(valorMin);
+    values.push(parseFloat(valorMin));
   }
-  if (!isNaN(valorMax)) {
+
+  if (!isNaN(parseFloat(valorMax))) {
     whereClauses.push(`tensao <= $${values.length + 1}`);
-    values.push(valorMax);
+    values.push(parseFloat(valorMax));
   }
 
   const where = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
   try {
-    const countQuery = `SELECT COUNT(*) FROM leituras ${where}`;
-    const totalResult = await sql.query(countQuery, values);
+    const totalResult = await sql.query(`SELECT COUNT(*) FROM leituras ${where}`, values);
     const total = parseInt(totalResult[0].count);
 
-    const dataQuery = `
-      SELECT timestamp, tensao
-      FROM leituras
-      ${where}
-      ORDER BY ${orderByColumn} ${sortDirection}
-      OFFSET ${start}
-      LIMIT ${length}
-    `;
-    const dataResult = await sql.query(dataQuery, values);
+    const dataResult = await sql.query(
+      `SELECT timestamp, tensao
+       FROM leituras
+       ${where}
+       ORDER BY ${orderByColumn} ${sortDirection}
+       OFFSET ${start}
+       LIMIT ${length}`,
+      values
+    );
 
     return res.status(200).json({
       data: dataResult,
