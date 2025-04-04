@@ -3,27 +3,23 @@ import { neon } from '@neondatabase/serverless';
 export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL);
 
-  const data = req.query.data || new Date().toISOString().slice(0, 10); // ex: "2025-04-04"
+  const data = req.query.data || new Date().toISOString().slice(0, 10);
 
-  // Considerar o horário local UTC-3
   const inicioLocal = new Date(`${data}T00:00:00-03:00`);
   const fimLocal = new Date(`${data}T23:59:59-03:00`);
   const inicio = inicioLocal.toISOString();
   const fim = fimLocal.toISOString();
 
   try {
-    // 1. Médias por intervalo de 10 minutos
+    // Todas as medições do dia
     const dados = await sql`
-      SELECT 
-        date_trunc('minute', timestamp) + interval '5 minutes' * floor(extract(minute from timestamp)::int / 10) AS intervalo,
-        ROUND(AVG(tensao)::numeric, 2) as media
+      SELECT timestamp, tensao
       FROM leituras
       WHERE timestamp BETWEEN ${inicio} AND ${fim}
-      GROUP BY intervalo
-      ORDER BY intervalo ASC
+      ORDER BY timestamp ASC
     `;
 
-    // 2. Estatísticas globais (coluna tensao com tabela!)
+    // Estatísticas gerais do período
     const estatisticas = await sql`
       SELECT 
         MIN(l.tensao) as minimo,
@@ -36,13 +32,13 @@ export default async function handler(req, res) {
     `;
 
     return res.status(200).json({
-      agregados: dados,
+      dados,
       resumo: estatisticas[0],
       dataSelecionada: data
     });
 
   } catch (e) {
-    console.error("[API /resumo] Erro completo:", e);
+    console.error("[API /resumo] Erro:", e);
     return res.status(500).json({
       error: "Erro ao buscar resumo",
       detalhes: e.message || e.toString()

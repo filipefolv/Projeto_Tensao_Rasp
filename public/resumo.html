@@ -18,7 +18,7 @@
       <input type="date" id="dataSelecionada" class="form-control">
     </div>
     <div class="col-md-2 d-flex align-items-end">
-      <button class="btn btn-primary w-100" onclick="carregarResumo()">🔍 Consultar</button>
+      <button class="btn btn-primary w-100" id="consultarResumo">🔍 Consultar</button>
     </div>
     <div class="col-md-6 d-flex align-items-end justify-content-end">
       <a href="/" class="btn btn-secondary">🏠 Voltar ao gráfico principal</a>
@@ -37,81 +37,103 @@
 </div>
 
 <script>
-  const ctx = document.getElementById("graficoResumo").getContext("2d");
-  const grafico = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: [],
-      datasets: [{
-        label: "Tensão (V)",
-        data: [],
-        borderColor: "#0d6efd",
-        backgroundColor: "rgba(13,110,253,0.2)",
-        fill: true,
-        tension: 0.3
-      }]
-    },
-    options: { responsive: true, maintainAspectRatio: false }
-  });
-
-  function carregarResumo() {
-    const data = document.getElementById("dataSelecionada").value;
-    const url = data
-      ? `/api/resumo?data=${data}`
-      : `/api/resumo`;
-
-    fetch(url)
-      .then(res => res.json())
-      .then(res => {
-        const { agregados, resumo, dataSelecionada } = res;
-
-        grafico.data.labels = agregados.map(d => {
-          const t = new Date(d.intervalo);
-          return t.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
-        });
-
-        grafico.data.datasets[0].data = agregados.map(d => d.media);
-        grafico.update();
-
-        const horaMin = new Date(resumo.horario_minimo).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
-        const horaMax = new Date(resumo.horario_maximo).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
-
-        document.getElementById("resumoCards").innerHTML = `
-          <div class="col-md-4">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title">📊 Média</h5>
-                <p class="card-text fs-4">${parseFloat(resumo.media).toFixed(2)} V</p>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title">🔽 Mínimo</h5>
-                <p class="card-text fs-4">${parseFloat(resumo.minimo).toFixed(2)} V às ${horaMin}</p>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title">🔼 Máximo</h5>
-                <p class="card-text fs-4">${parseFloat(resumo.maximo).toFixed(2)} V às ${horaMax}</p>
-              </div>
-            </div>
-          </div>
-        `;
-
-        document.getElementById("dataSelecionada").value = dataSelecionada;
-      })
-      .catch(err => {
-        console.error("Erro ao carregar resumo:", err);
-      });
-  }
-
-  // Carregar com a data de hoje ao abrir
   document.addEventListener("DOMContentLoaded", () => {
+    const ctx = document.getElementById("graficoResumo").getContext("2d");
+
+    const grafico = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Tensão (V)",
+          data: [],
+          borderColor: "#0d6efd",
+          backgroundColor: "rgba(13,110,253,0.1)",
+          fill: true,
+          tension: 0,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            ticks: {
+              maxTicksLimit: 12
+            }
+          }
+        },
+        plugins: {
+          decimation: {
+            enabled: true,
+            algorithm: 'lttb',
+            samples: 1000
+          }
+        }
+      }
+    });
+
+    const btnConsultar = document.querySelector("#consultarResumo");
+    btnConsultar.addEventListener("click", carregarResumo);
+
+    function carregarResumo() {
+      const data = document.getElementById("dataSelecionada").value;
+      const url = data
+        ? `https://projeto-tensao-rasp.vercel.app/api/resumo?data=${data}`
+        : `https://projeto-tensao-rasp.vercel.app/api/resumo`;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(res => {
+          const { dados, resumo, dataSelecionada } = res;
+
+          grafico.data.labels = dados.map(d => {
+            const t = new Date(d.timestamp);
+            return t.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
+          });
+
+          grafico.data.datasets[0].data = dados.map(d => parseFloat(d.tensao.toFixed(2)));
+          grafico.update();
+
+          const horaMin = new Date(resumo.horario_minimo).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
+          const horaMax = new Date(resumo.horario_maximo).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
+
+          document.getElementById("resumoCards").innerHTML = `
+            <div class="col-md-4">
+              <div class="card shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title">📊 Média</h5>
+                  <p class="card-text fs-4">${parseFloat(resumo.media).toFixed(2)} V</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title">🔽 Mínimo</h5>
+                  <p class="card-text fs-4">${parseFloat(resumo.minimo).toFixed(2)} V às ${horaMin}</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title">🔼 Máximo</h5>
+                  <p class="card-text fs-4">${parseFloat(resumo.maximo).toFixed(2)} V às ${horaMax}</p>
+                </div>
+              </div>
+            </div>
+          `;
+
+          document.getElementById("dataSelecionada").value = dataSelecionada;
+        })
+        .catch(err => {
+          console.error("Erro ao carregar resumo:", err);
+        });
+    }
+
+    // Auto carregamento com data de hoje
     const hoje = new Date().toISOString().split("T")[0];
     document.getElementById("dataSelecionada").value = hoje;
     carregarResumo();
