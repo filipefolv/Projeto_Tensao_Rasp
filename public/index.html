@@ -60,7 +60,7 @@
       const reversedData = data.reverse().slice(-50); // últimos 50 pontos (~4min histórico)
 
       tensaoChart.data.labels = reversedData.map(d => new Date(d.timestamp).toLocaleTimeString());
-      tensaoChart.data.datasets[0].data = reversedData.map(d => d.tensao);
+      tensaoChart.data.datasets[0].data = reversedData.map(d => parseFloat(d.tensao.toFixed(2)));
       tensaoChart.update();
 
     } catch (err) {
