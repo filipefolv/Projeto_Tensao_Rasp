@@ -57,8 +57,9 @@
   function carregarResumo() {
     const data = document.getElementById("dataSelecionada").value;
     const url = data
-      ? `/api/resumo?data=${data}`
-      : `/api/resumo`;
+      ? `https://projeto-tensao-rasp.vercel.app/api/resumo?data=${data}`
+      : `https://projeto-tensao-rasp.vercel.app/api/resumo`;
+
 
     fetch(url)
       .then(res => res.json())
