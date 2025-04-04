@@ -24,23 +24,19 @@ export default async function handler(req, res) {
         continue;
       }
 
-      try {
-          const existente = await sql`
-          SELECT 1 FROM leituras WHERE timestamp = ${timestamp} LIMIT 1
+      // Verifica se já existe registro com esse timestamp
+      const existente = await sql`
+        SELECT 1 FROM leituras WHERE timestamp = ${timestamp} LIMIT 1
+      `;
+
+      if (existente.length === 0) {
+        await sql`
+          INSERT INTO leituras (timestamp, tensao)
+          VALUES (${timestamp}, ${tensao})
         `;
-        
-        if (existente.length === 0) {
-          await sql`
-            INSERT INTO leituras (timestamp, tensao)
-            VALUES (${timestamp}, ${tensao})
-          `;
-          insertCount++;
-        } else {
-          console.log(`⚠️ Registro duplicado ignorado: ${timestamp}`);
-        }  
-      } catch (e) {
-        console.warn(`⚠️ Falha ao inserir leitura: ${timestamp}`, e.message);
-        // Se quiser evitar erros duplicados, pode usar ON CONFLICT DO NOTHING
+        insertCount++;
+      } else {
+        console.log(`⚠️ Registro duplicado ignorado: ${timestamp}`);
       }
     }
 
@@ -51,6 +47,9 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('❌ Erro na sincronização:', error);
-    return res.status(500).json({ error: 'Erro ao sincronizar', detalhes: error.message });
+    return res.status(500).json({
+      error: 'Erro ao sincronizar',
+      detalhes: error.message
+    });
   }
 }
