@@ -71,6 +71,9 @@
             pan: {
               enabled: true,
               mode: 'x',
+              overScaleMode: 'x',
+              modifierKey: null, // permite arrastar sem usar Shift/Ctrl
+              threshold: 10
             },
             zoom: {
               wheel: {
@@ -155,8 +158,8 @@
 
         grafico.data.datasets[0].pointRadius = valores.map((_, i) => (i === idxMax || i === idxMin) ? 5 : 0);
         grafico.data.datasets[0].pointBackgroundColor = valores.map((_, i) => {
-          if (i === idxMax) return '#dc3545';
-          if (i === idxMin) return '#0d6efd';
+          if (i === idxMax) return '#dc3545'; // vermelho para máximo
+          if (i === idxMin) return '#198754'; // verde para mínimo
           return 'transparent';
         });
 
