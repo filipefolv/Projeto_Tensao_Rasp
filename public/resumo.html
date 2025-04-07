@@ -80,7 +80,9 @@
             pan: {
               enabled: true,
               mode: 'x',
-              modifierKey: null  // permite pan com botão esquerdo
+              modifierKey: null,  // permite pan com botão esquerdo
+              overScaleMode: 'x',
+              threshold: 10, // suavidade do início do pan
             },
             zoom: {
               wheel: { enabled: true },
