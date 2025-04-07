@@ -2,19 +2,16 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Resumo Diário - Tensão</title>
+  <title>Resumo Interativo de Tensão</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- Chart.js v2.x + Zoom Plugin + Hammer.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 </head>
 <body class="bg-light">
 
 <div class="container py-4">
-  <h2 class="mb-4">Resumo Diário de Tensão</h2>
+  <h2 class="mb-4">Resumo Interativo de Tensão</h2>
 
   <div class="row mb-3">
     <div class="col-md-3">
@@ -59,39 +56,43 @@
           borderColor: "#0d6efd",
           backgroundColor: "rgba(13,110,253,0.1)",
           fill: true,
-          lineTension: 0.3,
-          pointRadius: 0.7
+          tension: 0.2,
+          pointRadius: 0.6
         }]
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
-        tooltips: {
+        interaction: {
           mode: 'index',
           intersect: false
         },
-        hover: {
-          mode: 'nearest',
-          intersect: true
+        plugins: {
+          zoom: {
+            pan: {
+              enabled: true,
+              mode: 'x',
+            },
+            zoom: {
+              wheel: {
+                enabled: true
+              },
+              pinch: {
+                enabled: true
+              },
+              mode: 'x'
+            }
+          },
+          tooltip: {
+            enabled: true
+          }
         },
         scales: {
-          xAxes: [{
-            ticks: { maxTicksLimit: 20 },
-            type: 'category',
-            distribution: 'linear'
-          }],
-          yAxes: [{
-            ticks: { beginAtZero: true }
-          }]
-        },
-        pan: {
-          enabled: true,
-          mode: 'x'
-        },
-        zoom: {
-          enabled: true,
-          mode: 'x',
-          drag: false
+          x: {
+            ticks: { autoSkip: true, maxTicksLimit: 20 }
+          },
+          y: {
+            beginAtZero: false
+          }
         }
       }
     });
@@ -143,22 +144,19 @@
       .then(res => {
         const { dados, resumo, dataSelecionada } = res;
 
-        grafico.data.labels = dados.map(d => {
-          const t = new Date(d.timestamp);
-          return t.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
-        });
+        const labels = dados.map(d => new Date(d.timestamp).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" }));
+        const valores = dados.map(d => parseFloat(d.tensao.toFixed(2)));
 
-        grafico.data.datasets[0].data = dados.map(d => parseFloat(d.tensao.toFixed(2)));
+        grafico.data.labels = labels;
+        grafico.data.datasets[0].data = valores;
 
-        // Realce visual de pontos mínimo e máximo
-        const valores = grafico.data.datasets[0].data;
         const idxMax = valores.indexOf(Math.max(...valores));
         const idxMin = valores.indexOf(Math.min(...valores));
 
         grafico.data.datasets[0].pointRadius = valores.map((_, i) => (i === idxMax || i === idxMin) ? 5 : 0);
         grafico.data.datasets[0].pointBackgroundColor = valores.map((_, i) => {
-          if (i === idxMax) return '#dc3545'; // vermelho (máximo)
-          if (i === idxMin) return '#0d6efd'; // azul (mínimo)
+          if (i === idxMax) return '#dc3545';
+          if (i === idxMin) return '#0d6efd';
           return 'transparent';
         });
 
@@ -193,14 +191,9 @@
             </div>
           </div>
         `;
-
-        document.getElementById("dataSelecionada").value = dataSelecionada;
       })
-      .catch(err => {
-        console.error("Erro ao carregar resumo:", err);
-      });
+      .catch(err => console.error("Erro ao carregar resumo:", err));
   }
 </script>
-
 </body>
 </html>
