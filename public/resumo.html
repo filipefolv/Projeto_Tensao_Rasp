@@ -21,17 +21,17 @@
     <div class="col-md-2 d-flex align-items-end">
       <button class="btn btn-primary w-100" id="consultarResumo">🔍 Consultar</button>
     </div>
-    <div class="col-md-2 d-flex align-items-end">
-      <button class="btn btn-outline-secondary w-100" onclick="resetarZoom()">🔄 Resetar Zoom</button>
-    </div>
-    <div class="col-md-5 d-flex align-items-end justify-content-end">
-      <a href="/" class="btn btn-secondary w-100">🏠 Voltar ao gráfico principal</a>
+    <div class="col-md-7 d-flex align-items-end">
+      <div class="d-flex gap-2 w-100">
+        <button class="btn btn-outline-secondary w-100" onclick="resetarZoom()">🔄 Resetar Zoom</button>
+        <button class="btn btn-outline-success w-100" onclick="baixarGrafico()">📷 Baixar gráfico</button>
+        <button class="btn btn-outline-info w-100" onclick="baixarCSV()">📄 Exportar CSV</button>
+        <a href="/" class="btn btn-secondary w-100">🏠 Voltar</a>
+      </div>
     </div>
   </div>
 
-  <div class="row text-center mb-4" id="resumoCards">
-    <!-- Estatísticas serão injetadas aqui -->
-  </div>
+  <div class="row text-center mb-4" id="resumoCards"></div>
 
   <div class="card">
     <div class="card-body">
@@ -80,14 +80,11 @@
             pan: {
               enabled: true,
               mode: 'x',
+              modifierKey: null  // permite pan com botão esquerdo
             },
             zoom: {
-              wheel: {
-                enabled: true
-              },
-              pinch: {
-                enabled: true
-              },
+              wheel: { enabled: true },
+              pinch: { enabled: true },
               mode: 'x'
             }
           }
@@ -104,6 +101,31 @@
 
   function resetarZoom() {
     grafico.resetZoom();
+  }
+
+  function baixarGrafico() {
+    const link = document.createElement("a");
+    link.download = "grafico_tensao.png";
+    link.href = grafico.toBase64Image();
+    link.click();
+  }
+
+  function baixarCSV() {
+    const labels = grafico.data.labels;
+    const dados = grafico.data.datasets[0].data;
+
+    let csv = "timestamp,tensao\n";
+    for (let i = 0; i < labels.length; i++) {
+      csv += `${labels[i]},${dados[i]}\n`;
+    }
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "leituras_tensao.csv";
+    a.click();
+    window.URL.revokeObjectURL(url);
   }
 
   function carregarResumo() {
@@ -123,6 +145,24 @@
         });
 
         grafico.data.datasets[0].data = dados.map(d => parseFloat(d.tensao.toFixed(2)));
+
+        // Encontrar índices dos pontos mínimo e máximo
+        const dadosValores = grafico.data.datasets[0].data;
+        const idxMax = dadosValores.indexOf(Math.max(...dadosValores));
+        const idxMin = dadosValores.indexOf(Math.min(...dadosValores));
+
+        // Adiciona estilos visuais aos pontos
+        grafico.data.datasets[0].pointRadius = dadosValores.map((_, i) => {
+        if (i === idxMax || i === idxMin) return 5;
+        return 0;
+        });
+
+        grafico.data.datasets[0].pointBackgroundColor = dadosValores.map((_, i) => {
+        if (i === idxMax) return '#dc3545';     // vermelho (máximo)
+        if (i === idxMin) return '#0d6efd';     // azul (mínimo)
+        return 'transparent';
+        });
+
         grafico.update();
 
         const horaMin = new Date(resumo.horario_minimo).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
