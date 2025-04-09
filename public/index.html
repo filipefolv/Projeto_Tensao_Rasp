@@ -22,6 +22,11 @@
       </div>
     </div>
 
+    <!-- Linha para exibir data da última atualização -->
+    <div class="mt-2">
+      <p id="dataStatus" class="text-muted"></p>
+    </div>
+
     <div class="mt-3">
       <a href="#" class="btn btn-primary btn-sm" onclick="location.reload()">🔄 Atualizar agora</a>
       <a href="/tabela.html" class="btn btn-secondary btn-sm">📋 Ver tabela</a>
@@ -58,19 +63,40 @@
     try {
       const res = await fetch('https://projeto-tensao-rasp.vercel.app/api/tensao');
       const data = await res.json();
-      const reversedData = data.reverse().slice(-50); // últimos 50 pontos (~4min histórico)
 
-      tensaoChart.data.labels = reversedData.map(d => new Date(d.timestamp).toLocaleTimeString());
-      tensaoChart.data.datasets[0].data = reversedData.map(d => parseFloat(d.tensao.toFixed(2)));
+      // Reverte e pega até 50 pontos recentes
+      const reversedData = data.reverse().slice(-50); 
+      
+      // Atualiza o gráfico
+      tensaoChart.data.labels = reversedData.map(d => 
+        new Date(d.timestamp).toLocaleTimeString('pt-BR')
+      );
+      tensaoChart.data.datasets[0].data = reversedData.map(d => 
+        parseFloat(d.tensao.toFixed(2))
+      );
       tensaoChart.update();
+
+      // Exibir apenas a data do último registro (mais recente)
+      if (reversedData.length > 0) {
+        const ultimo = reversedData[reversedData.length - 1]; // último item do array reversedData
+        const dataFormatada = new Date(ultimo.timestamp)
+          .toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+        document.getElementById('dataStatus').textContent = 
+          `Última atualização: ${dataFormatada}`;
+      } else {
+        document.getElementById('dataStatus').textContent = 'Nenhuma leitura disponível';
+      }
 
     } catch (err) {
       console.error('Erro ao atualizar gráfico:', err);
+      document.getElementById('dataStatus').textContent = 'Erro ao carregar dados';
     }
   }
 
+  // Atualiza ao carregar a página e depois a cada 5 segundos
   updateChart();
-  setInterval(updateChart, 5000); // atualiza a cada 5 segundos
+  setInterval(updateChart, 5000);
 </script>
 
 </body>
