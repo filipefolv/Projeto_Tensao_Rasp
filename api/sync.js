@@ -1,7 +1,7 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, sql } from '@neondatabase/serverless';
 
 export default async function handler(req, res) {
-  const sql = neon(process.env.DATABASE_URL);
+  const db = neon(process.env.DATABASE_URL);
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido. Use POST.' });
@@ -14,7 +14,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Filtra dados válidos (com timestamp e número)
     const dadosInseriveis = leituras
       .filter(l => l.timestamp && typeof l.tensao === 'number')
       .map(l => [l.timestamp, l.tensao]);
@@ -23,8 +22,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Nenhuma leitura válida.' });
     }
 
-    // Inserção em lote com verificação automática de duplicatas
-    await sql`
+    await db`
       INSERT INTO leituras (timestamp, tensao)
       VALUES ${sql(dadosInseriveis)}
       ON CONFLICT (timestamp) DO NOTHING
