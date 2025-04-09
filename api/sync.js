@@ -14,42 +14,28 @@ export default async function handler(req, res) {
   }
 
   try {
-    let insertCount = 0;
+    // Prepara os dados para inserção em lote
+    const dadosInseriveis = leituras
+      .filter(l => l.timestamp && typeof l.tensao === 'number')
+      .map(l => [l.timestamp, l.tensao]);
 
-    for (const leitura of leituras) {
-      const { timestamp, tensao } = leitura;
-
-      if (!timestamp || typeof tensao !== 'number') {
-        console.warn(`⚠️ Ignorando leitura inválida:`, leitura);
-        continue;
-      }
-
-      // Verifica se já existe registro com esse timestamp
-      const existente = await sql`
-        SELECT 1 FROM leituras WHERE timestamp = ${timestamp} LIMIT 1
-      `;
-
-      if (existente.length === 0) {
-        await sql`
-          INSERT INTO leituras (timestamp, tensao)
-          VALUES (${timestamp}, ${tensao})
-        `;
-        insertCount++;
-      } else {
-        console.log(`⚠️ Registro duplicado ignorado: ${timestamp}`);
-      }
+    if (dadosInseriveis.length === 0) {
+      return res.status(400).json({ error: 'Nenhuma leitura válida.' });
     }
 
+    const result = await sql`
+      INSERT INTO leituras (timestamp, tensao)
+      VALUES ${sql(dadosInseriveis)}
+      ON CONFLICT (timestamp) DO NOTHING
+    `;
+
     return res.status(200).json({
-      message: 'Sincronização concluída.',
-      inserted: insertCount
+      message: 'Sincronização em lote concluída.',
+      inserted: dadosInseriveis.length
     });
 
   } catch (error) {
-    console.error('❌ Erro na sincronização:', error);
-    return res.status(500).json({
-      error: 'Erro ao sincronizar',
-      detalhes: error.message
-    });
+    console.error('❌ Erro ao sincronizar:', error);
+    return res.status(500).json({ error: 'Erro interno', detalhes: error.message });
   }
 }
