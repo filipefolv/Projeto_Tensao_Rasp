@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Prepara os dados para inserção em lote
+    // Filtra dados válidos (com timestamp e número)
     const dadosInseriveis = leituras
       .filter(l => l.timestamp && typeof l.tensao === 'number')
       .map(l => [l.timestamp, l.tensao]);
@@ -23,7 +23,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Nenhuma leitura válida.' });
     }
 
-    const result = await sql`
+    // Inserção em lote com verificação automática de duplicatas
+    await sql`
       INSERT INTO leituras (timestamp, tensao)
       VALUES ${sql(dadosInseriveis)}
       ON CONFLICT (timestamp) DO NOTHING
