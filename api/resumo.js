@@ -4,44 +4,46 @@ export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL);
 
   const data = req.query.data || new Date().toISOString().slice(0, 10);
+  const device_id = req.query.device_id;                // ← obrigatório
 
-  const inicioLocal = new Date(`${data}T00:00:00-03:00`);
-  const fimLocal = new Date(`${data}T23:59:59-03:00`);
-  const inicio = inicioLocal.toISOString();
-  const fim = fimLocal.toISOString();
+  if (!device_id)
+    return res.status(400).json({ error: 'device_id obrigatório' });
+
+  // converte data local-3 h para UTC
+  const inicio = new Date(`${data}T00:00:00-03:00`).toISOString();
+  const fim    = new Date(`${data}T23:59:59-03:00`).toISOString();
 
   try {
-    // Todas as medições do dia
+    // todas as medições do dia para esse sistema
     const dados = await sql`
       SELECT timestamp, tensao
       FROM leituras
-      WHERE timestamp BETWEEN ${inicio} AND ${fim}
+      WHERE device_id = ${device_id}
+        AND timestamp BETWEEN ${inicio} AND ${fim}
       ORDER BY timestamp ASC
     `;
 
-    // Estatísticas gerais do período
-    const estatisticas = await sql`
+    // estatísticas gerais
+    const [estat] = await sql`
       SELECT 
-        MIN(l.tensao) as minimo,
-        MAX(l.tensao) as maximo,
-        AVG(l.tensao) as media,
-        (SELECT timestamp FROM leituras WHERE timestamp BETWEEN ${inicio} AND ${fim} ORDER BY tensao ASC LIMIT 1) as horario_minimo,
-        (SELECT timestamp FROM leituras WHERE timestamp BETWEEN ${inicio} AND ${fim} ORDER BY tensao DESC LIMIT 1) as horario_maximo
-      FROM leituras l
-      WHERE l.timestamp BETWEEN ${inicio} AND ${fim}
+        MIN(tensao)  AS minimo,
+        MAX(tensao)  AS maximo,
+        AVG(tensao)  AS media,
+        (SELECT timestamp FROM leituras WHERE device_id = ${device_id}
+         AND timestamp BETWEEN ${inicio} AND ${fim}
+         ORDER BY tensao ASC  LIMIT 1) AS horario_minimo,
+        (SELECT timestamp FROM leituras WHERE device_id = ${device_id}
+         AND timestamp BETWEEN ${inicio} AND ${fim}
+         ORDER BY tensao DESC LIMIT 1) AS horario_maximo
+      FROM leituras
+      WHERE device_id = ${device_id}
+        AND timestamp BETWEEN ${inicio} AND ${fim}
     `;
 
-    return res.status(200).json({
-      dados,
-      resumo: estatisticas[0],
-      dataSelecionada: data
-    });
+    return res.status(200).json({ dados, resumo: estat, dataSelecionada: data });
 
   } catch (e) {
-    console.error("[API /resumo] Erro:", e);
-    return res.status(500).json({
-      error: "Erro ao buscar resumo",
-      detalhes: e.message || e.toString()
-    });
+    console.error('[API /resumo] erro:', e);
+    return res.status(500).json({ error: 'Erro ao buscar resumo' });
   }
 }

@@ -1,74 +1,39 @@
 import { neon } from '@neondatabase/serverless';
-
 export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL);
 
-  const start = parseInt(req.query.start) || 0;
-  const length = parseInt(req.query.length) || 25;
+  const start   = parseInt(req.query.start)   || 0;
+  const length  = parseInt(req.query.length)  || 25;
+  const orderBy = req.query['order[0][column]'] === '1' ? 'tensao' : 'timestamp';
+  const dir     = req.query['order[0][dir]']?.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
-  const orderColumnIndex = req.query['order[0][column]'] || 0;
-  const orderDir = req.query['order[0][dir]'] || 'desc';
+  const { dataInicio, dataFim, valorMin, valorMax, device_id } = req.query;
+  if (!device_id) return res.status(400).json({ error: 'device_id obrigatório' });
 
-  const columnMap = {
-    0: 'timestamp',
-    1: 'tensao'
-  };
+  const whereClauses = ['device_id = $1'];
+  const vals = [device_id];
 
-  const orderByColumn = columnMap[orderColumnIndex] || 'timestamp';
-  const sortDirection = orderDir.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  if (dataInicio) { whereClauses.push(`timestamp >= $${vals.length+1}`); vals.push(dataInicio); }
+  if (dataFim)    { whereClauses.push(`timestamp <= $${vals.length+1}`); vals.push(dataFim);  }
+  if (valorMin)   { whereClauses.push(`tensao >=   $${vals.length+1}`); vals.push(parseFloat(valorMin)); }
+  if (valorMax)   { whereClauses.push(`tensao <=   $${vals.length+1}`); vals.push(parseFloat(valorMax)); }
 
-  const dataInicio = req.query.dataInicio;
-  const dataFim = req.query.dataFim;
-  const valorMin = req.query.valorMin;
-  const valorMax = req.query.valorMax;
-
-  let whereClauses = [];
-  let values = [];
-
-  if (dataInicio && !isNaN(Date.parse(dataInicio))) {
-    whereClauses.push(`timestamp >= $${values.length + 1}`);
-    values.push(dataInicio);
-  }
-
-  if (dataFim && !isNaN(Date.parse(dataFim))) {
-    whereClauses.push(`timestamp <= $${values.length + 1}`);
-    values.push(dataFim);
-  }
-
-  if (!isNaN(parseFloat(valorMin))) {
-    whereClauses.push(`tensao >= $${values.length + 1}`);
-    values.push(parseFloat(valorMin));
-  }
-
-  if (!isNaN(parseFloat(valorMax))) {
-    whereClauses.push(`tensao <= $${values.length + 1}`);
-    values.push(parseFloat(valorMax));
-  }
-
-  const where = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+  const where = 'WHERE ' + whereClauses.join(' AND ');
 
   try {
-    const totalResult = await sql.query(`SELECT COUNT(*) FROM leituras ${where}`, values);
-    const total = parseInt(totalResult[0].count);
+    const total = Number((await sql.query(`SELECT COUNT(*) FROM leituras ${where}`, vals))[0].count);
 
-    const dataResult = await sql.query(
+    const data  = await sql.query(
       `SELECT timestamp, tensao
        FROM leituras
        ${where}
-       ORDER BY ${orderByColumn} ${sortDirection}
-       OFFSET ${start}
-       LIMIT ${length}`,
-      values
-    );
+       ORDER BY ${orderBy} ${dir}
+       OFFSET ${start} LIMIT ${length}`, vals);
 
-    return res.status(200).json({
-      data: dataResult,
-      recordsTotal: total,
-      recordsFiltered: total
-    });
+    res.status(200).json({ data, recordsTotal: total, recordsFiltered: total });
 
-  } catch (error) {
-    console.error("Erro ao paginar com filtro:", error);
-    return res.status(500).json({ error: "Erro no servidor" });
+  } catch (e) {
+    console.error('paginar erro:', e);
+    res.status(500).json({ error: 'Erro no servidor' });
   }
 }
