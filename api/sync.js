@@ -3,54 +3,55 @@ import { neon } from '@neondatabase/serverless';
 const db = neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+  if (req.method !== 'POST')
     return res.status(405).json({ error: 'Método não permitido. Use POST.' });
-  }
 
   const leituras = req.body.leituras || [];
-  if (!Array.isArray(leituras) || leituras.length === 0) {
+  if (!Array.isArray(leituras) || leituras.length === 0)
     return res.status(400).json({ error: 'Nenhuma leitura recebida.' });
-  }
 
   try {
-    // Filtra dados válidos
-    const dadosInseriveis = leituras
-      .filter(l => l.timestamp && typeof l.tensao === 'number');
+    // mantém apenas registros com campos válidos
+    const dados = leituras.filter(l =>
+      l.timestamp && typeof l.tensao === 'number'
+    );
 
-    if (dadosInseriveis.length === 0) {
+    if (!dados.length)
       return res.status(400).json({ error: 'Nenhuma leitura válida.' });
-    }
 
-    // Construir placeholders e array de valores
-    // Ex: INSERT INTO leituras (timestamp, tensao)
-    //     VALUES ($1, $2), ($3, $4), ... ON CONFLICT DO NOTHING
+    /* ----------------------------------------------------------
+       Monta placeholders  ($1,$2,$3), ($4,$5,$6) ...
+       e array "values": [timestamp, tensao, device_id, ...]
+       ---------------------------------------------------------- */
     const placeholders = [];
     const values = [];
-    for (let i = 0; i < dadosInseriveis.length; i++) {
-      // cada registro gera: ( $x, $y )
-      placeholders.push(`($${2*i+1}::timestamptz, $${2*i+2}::float8)`);
-      values.push(dadosInseriveis[i].timestamp, dadosInseriveis[i].tensao);
+    for (let i = 0; i < dados.length; i++) {
+      const base = 3 * i;                // 0-index
+      placeholders.push(
+        `($${base + 1}::timestamptz, $${base + 2}::float8, $${base + 3}::text)`
+      );
+      values.push(
+        dados[i].timestamp,
+        dados[i].tensao,
+        dados[i].device_id || 'technip'   // default se não vier no payload
+      );
     }
 
     const query = `
-      INSERT INTO leituras (timestamp, tensao)
+      INSERT INTO leituras (timestamp, tensao, device_id)
       VALUES ${placeholders.join(', ')}
-      ON CONFLICT (timestamp) DO NOTHING
+      ON CONFLICT (device_id, timestamp) DO NOTHING
     `;
 
-    // Agora chamamos db.query(...) em vez de db`...`
     await db.query(query, values);
 
     return res.status(200).json({
-      message: 'Sincronização em lote concluída.',
-      inserted: dadosInseriveis.length
+      message: 'Sincronização concluída.',
+      inserted: dados.length
     });
 
   } catch (error) {
     console.error('❌ Erro ao sincronizar:', error);
-    return res.status(500).json({
-      error: 'Erro interno',
-      detalhes: error.message
-    });
+    return res.status(500).json({ error: 'Erro interno', detalhes: error.message });
   }
 }
