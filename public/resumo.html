@@ -17,6 +17,15 @@
 <div class="container py-4">
   <h2 class="mb-4">Registros diários</h2>
 
+  <div class="col-md-3">
+    <label class="form-label">Sistema</label>
+    <select id="deviceSelect" class="form-select form-select-sm">
+      <option value="">Todos</option>
+      <option value="technip">Technip</option>
+      <option value="unipilot">Unipilot</option>
+    </select>
+  </div>  
+
   <div class="row mb-3">
     <div class="col-md-3">
       <label class="form-label">Escolha a data</label>
@@ -105,6 +114,8 @@
 
     document.getElementById("consultarResumo").addEventListener("click", carregarResumo);
 
+    document.getElementById('deviceSelect').addEventListener('change', carregarResumo);
+
     const hoje = new Date().toISOString().split("T")[0];
     document.getElementById("dataSelecionada").value = hoje;
     carregarResumo();
@@ -141,9 +152,9 @@
 
   function carregarResumo() {
     const data = document.getElementById("dataSelecionada").value;
-    const url = data
-      ? `https://projeto-tensao-rasp.vercel.app/api/resumo?data=${data}`
-      : `https://projeto-tensao-rasp.vercel.app/api/resumo`;
+    const dev  = document.getElementById('deviceSelect').value;
+    const url  = `https://projeto-tensao-rasp.vercel.app/api/resumo`
+             + `?data=${data}${dev ? `&device_id=${dev}` : ''}`;
 
     fetch(url)
       .then(res => res.json())
