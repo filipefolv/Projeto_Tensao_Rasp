@@ -81,38 +81,44 @@
         ajax: {
           url: 'https://projeto-tensao-rasp.vercel.app/api/tensao_paginar',
           data: function (d) {
+            // sempre envia o sistema selecionado
+            d.device_id = $('#deviceSelect').val();      
+
+            // filtros opcionais
             if (filtrosAtivos) {
               d.dataInicio = $('#dataInicio').val();
-              d.dataFim = $('#dataFim').val();
-              d.valorMin = $('#valorMin').val();
-              d.valorMax = $('#valorMax').val();
-              d.device_id  = $('#deviceSelect').val();   //  ➜ NOVO
+              d.dataFim    = $('#dataFim').val();
+              d.valorMin   = $('#valorMin').val();
+              d.valorMax   = $('#valorMax').val();
             }
           }
         },
         columns: [
           {
             data: 'timestamp',
-            render: (data) =>
-              new Date(data).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+            render: data => new Date(data)
+              .toLocaleString('pt-BR',{ timeZone:'America/Sao_Paulo' })
           },
           {
             data: 'tensao',
-            render: (v) => `${v.toFixed(2)} V`
+            render: v => `${v.toFixed(2)} V`
           }
         ],
         pageLength: 25,
-        lengthMenu: [25, 50, 100, 250, 500],
-        order: [[0, 'desc']]
+        lengthMenu: [25,50,100,250,500],
+        order: [[0,'desc']]
       });
-      
+
+      // recarrega ao trocar de sistema
       $('#deviceSelect').on('change', () => table.ajax.reload());
 
-      $('#aplicarFiltros').on('click', function () {
+      // aplica filtros
+      $('#aplicarFiltros').on('click', () => {
         filtrosAtivos = true;
         table.ajax.reload();
       });
     });
+
   </script>  
 </body>
 </html>
