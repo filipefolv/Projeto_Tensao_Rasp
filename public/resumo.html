@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Registros de Tensão</title>
+  <title>Registros diários</title>
   <!-- Ícone do site -->
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   
@@ -106,15 +106,7 @@
         },
         scales: {
           x: {
-            type: 'time',  // Usando 'time' para o eixo X
-            time: {
-              unit: 'minute',  // A unidade de tempo será em minutos
-              tooltipFormat: 'll HH:mm'  // Exibição do tooltip
-            },
-            ticks: {
-              autoSkip: true,
-              maxTicksLimit: 20
-            }
+            ticks: { autoSkip: true, maxTicksLimit: 20 }
           },
           y: {
             beginAtZero: false
@@ -174,14 +166,12 @@
       .then(res => {
         const { dados, resumo, dataSelecionada } = res;
 
-        // Convertendo os dados para timestamp em milissegundos
-        const labels = dados.map(d => new Date(d.timestamp).getTime());  // Timestamps em milissegundos
+        const labels = dados.map(d => new Date(d.timestamp).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" }));
         const valores = dados.map(d => parseFloat(d.tensao.toFixed(2)));
 
         grafico.data.labels = labels;
         grafico.data.datasets[0].data = valores;
 
-        // Identificar máximos e mínimos
         const idxMax = valores.indexOf(Math.max(...valores));
         const idxMin = valores.indexOf(Math.min(...valores));
 
