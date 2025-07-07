@@ -67,7 +67,7 @@
       data: {
         labels: [],
         datasets: [{
-          label: "Tensão (V)",
+          label: "Tensão (V) - Technip", // Incluindo a data na legenda
           data: [],
           borderColor: "#0d6efd",
           backgroundColor: "rgba(13,110,253,0.1)",
@@ -166,17 +166,35 @@
       .then(res => {
         const { dados, resumo, dataSelecionada } = res;
 
-        const labels = dados.map(d => new Date(d.timestamp).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" }));
-        const valores = dados.map(d => parseFloat(d.tensao.toFixed(2)));
+        // Gerar todos os horários do dia
+        const startDate = new Date(dataInicio);
+        const endDate = new Date(dataFim);
+        const allHours = [];
+        const data = [];
 
-        grafico.data.labels = labels;
-        grafico.data.datasets[0].data = valores;
+        // Gera todos os horários de 5 em 5 minutos
+        for (let time = startDate; time <= endDate; time.setMinutes(time.getMinutes() + 5)) {
+          allHours.push(new Date(time).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" }));
+          data.push(null);  // Preenche com 'null' inicialmente
+        }
 
-        const idxMax = valores.indexOf(Math.max(...valores));
-        const idxMin = valores.indexOf(Math.min(...valores));
+        // Atualiza os valores com os dados obtidos
+        dados.forEach(d => {
+          const hora = new Date(d.timestamp).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
+          const index = allHours.indexOf(hora);
+          if (index !== -1) data[index] = parseFloat(d.tensao.toFixed(2)); // Substitui 'null' com os dados reais
+        });
 
-        grafico.data.datasets[0].pointRadius = valores.map((_, i) => (i === idxMax || i === idxMin) ? 5 : 0);
-        grafico.data.datasets[0].pointBackgroundColor = valores.map((_, i) => {
+        // Atualiza o gráfico
+        grafico.data.labels = allHours;
+        grafico.data.datasets[0].data = data;
+
+        // Identificar máximos e mínimos
+        const idxMax = data.indexOf(Math.max(...data));
+        const idxMin = data.indexOf(Math.min(...data));
+
+        grafico.data.datasets[0].pointRadius = data.map((_, i) => (i === idxMax || i === idxMin) ? 5 : 0);
+        grafico.data.datasets[0].pointBackgroundColor = data.map((_, i) => {
           if (i === idxMax) return '#dc3545'; // vermelho para máximo
           if (i === idxMin) return '#198754'; // verde para mínimo
           return 'transparent';
