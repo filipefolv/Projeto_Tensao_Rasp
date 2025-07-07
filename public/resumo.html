@@ -106,7 +106,15 @@
         },
         scales: {
           x: {
-            ticks: { autoSkip: true, maxTicksLimit: 20 }
+            type: 'time', // Usando o tipo de escala 'time' para o eixo X
+            time: {
+              unit: 'minute',  // Cada ponto será exibido com base na unidade de minutos
+              tooltipFormat: 'll HH:mm',  // Formato do tooltip de exibição
+            },
+            ticks: {
+              autoSkip: true,
+              maxTicksLimit: 20
+            }
           },
           y: {
             beginAtZero: false
@@ -166,12 +174,14 @@
       .then(res => {
         const { dados, resumo, dataSelecionada } = res;
 
-        const labels = dados.map(d => new Date(d.timestamp).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" }));
+        // Exibe os dados no gráfico respeitando os timestamps reais
+        const labels = dados.map(d => new Date(d.timestamp).getTime());  // Convertendo para timestamps
         const valores = dados.map(d => parseFloat(d.tensao.toFixed(2)));
 
         grafico.data.labels = labels;
         grafico.data.datasets[0].data = valores;
 
+        // Identificar máximos e mínimos
         const idxMax = valores.indexOf(Math.max(...valores));
         const idxMin = valores.indexOf(Math.min(...valores));
 
