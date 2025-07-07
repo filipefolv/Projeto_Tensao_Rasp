@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>Registros diários</title>
-  <!-- Ícone do site -->
   <link rel="icon" type="image/png" href="/assets/favicon.png">
   
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -106,10 +105,22 @@
         },
         scales: {
           x: {
-            type: 'time', // Usando o tipo de escala 'time' para o eixo X
+            type: 'time',
             time: {
-              unit: 'minute',  // Cada ponto será exibido com base na unidade de minutos
-              tooltipFormat: 'll HH:mm',  // Formato do tooltip de exibição
+              // Formato do tooltip ao passar o mouse sobre um ponto
+              tooltipFormat: 'dd/MM/yyyy HH:mm:ss',
+              // Formatos de exibição para os rótulos do eixo X, adaptando-se à escala
+              displayFormats: {
+                millisecond: 'HH:mm:ss.SSS',
+                second: 'HH:mm:ss',
+                minute: 'HH:mm',
+                hour: 'dd/MM HH:mm', // Exibe dia/mês e hora quando a unidade é hora
+                day: 'dd/MM/yyyy',   // Exibe a data completa quando a unidade é dia
+                week: 'dd/MM/yyyy',
+                month: 'MM/yyyy',
+                quarter: 'MMM yyyy',
+                year: 'yyyy',
+              }
             },
             ticks: {
               autoSkip: true,
@@ -117,14 +128,19 @@
             }
           },
           y: {
-            beginAtZero: false
+            beginAtZero: false,
+            ticks: {
+              // Adiciona 'V' ao final do rótulo do eixo Y
+              callback: function(value, index, values) {
+                return value + ' V';
+              }
+            }
           }
         }
       }
     });
 
     document.getElementById("consultarResumo").addEventListener("click", carregarResumo);
-
     document.getElementById('deviceSelect').addEventListener('change', carregarResumo);
 
     const hoje = new Date().toISOString().split("T")[0];
@@ -150,7 +166,9 @@
 
     let csv = "timestamp,tensao\n";
     for (let i = 0; i < labels.length; i++) {
-      csv += `${labels[i]},${dados[i]}\n`;
+      // Converte o timestamp de volta para o formato ISO para o CSV
+      const timestampISO = new Date(labels[i]).toISOString();
+      csv += `${timestampISO},${dados[i]}\n`;
     }
 
     const blob = new Blob([csv], { type: "text/csv" });
@@ -175,7 +193,7 @@
         const { dados, resumo, dataSelecionada } = res;
 
         // Exibe os dados no gráfico respeitando os timestamps reais
-        const labels = dados.map(d => new Date(d.timestamp).getTime());  // Convertendo para timestamps
+        const labels = dados.map(d => new Date(d.timestamp).getTime());
         const valores = dados.map(d => parseFloat(d.tensao.toFixed(2)));
 
         grafico.data.labels = labels;
@@ -185,7 +203,7 @@
         const idxMax = valores.indexOf(Math.max(...valores));
         const idxMin = valores.indexOf(Math.min(...valores));
 
-        grafico.data.datasets[0].pointRadius = valores.map((_, i) => (i === idxMax || i === idxMin) ? 5 : 0);
+        grafico.data.datasets[0].pointRadius = valores.map((_, i) => (i === idxMax || i === idxMin) ? 5 : 0.6);
         grafico.data.datasets[0].pointBackgroundColor = valores.map((_, i) => {
           if (i === idxMax) return '#dc3545'; // vermelho para máximo
           if (i === idxMin) return '#198754'; // verde para mínimo
