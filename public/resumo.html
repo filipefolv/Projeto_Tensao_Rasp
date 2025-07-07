@@ -106,10 +106,10 @@
         },
         scales: {
           x: {
-            type: 'time',  // Define que o eixo X será baseado em tempo
+            type: 'time',  // Usando 'time' para o eixo X
             time: {
-              unit: 'minute',  // Cada unidade será de 1 minuto
-              tooltipFormat: 'll HH:mm'  // Formato do tooltip
+              unit: 'minute',  // A unidade de tempo será em minutos
+              tooltipFormat: 'll HH:mm'  // Exibição do tooltip
             },
             ticks: {
               autoSkip: true,
@@ -174,7 +174,8 @@
       .then(res => {
         const { dados, resumo, dataSelecionada } = res;
 
-        const labels = dados.map(d => new Date(d.timestamp));  // Usando o timestamp real para o eixo X
+        // Convertendo os dados para timestamp em milissegundos
+        const labels = dados.map(d => new Date(d.timestamp).getTime());  // Timestamps em milissegundos
         const valores = dados.map(d => parseFloat(d.tensao.toFixed(2)));
 
         grafico.data.labels = labels;
