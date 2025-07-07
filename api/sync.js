@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Nenhuma leitura recebida.' });
 
   try {
-    // mantém apenas registros com campos válidos
+    // Mantém apenas registros com campos válidos
     const dados = leituras.filter(l =>
       l.timestamp && typeof l.tensao === 'number'
     );
@@ -43,6 +43,11 @@ export default async function handler(req, res) {
       ON CONFLICT (device_id, timestamp) DO NOTHING
     `;
 
+    // Log da query e valores para depuração
+    console.log("Query:", query);
+    console.log("Values:", values);
+
+    // Executa a query de inserção
     await db.query(query, values);
 
     return res.status(200).json({
