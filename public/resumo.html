@@ -15,7 +15,7 @@
 <body class="bg-light">
 
 <div class="container py-4">
-  <h2 class="mb-4">Registros diários</h2>
+  <h2 class="mb-4">Registros de Tensão</h2>
 
   <div class="mb-2" style="max-width:200px">
     <label class="form-label">Sistema</label>
@@ -27,8 +27,12 @@
 
   <div class="row mb-3">
     <div class="col-md-3">
-      <label class="form-label">Escolha a data</label>
-      <input type="date" id="dataSelecionada" class="form-control">
+      <label class="form-label">Data Início</label>
+      <input type="date" id="dataInicio" class="form-control">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Data Fim</label>
+      <input type="date" id="dataFim" class="form-control">
     </div>
     <div class="col-md-2 d-flex align-items-end">
       <button class="btn btn-primary w-100" id="consultarResumo">🔍 Consultar</button>
@@ -116,7 +120,8 @@
     document.getElementById('deviceSelect').addEventListener('change', carregarResumo);
 
     const hoje = new Date().toISOString().split("T")[0];
-    document.getElementById("dataSelecionada").value = hoje;
+    document.getElementById("dataInicio").value = hoje;
+    document.getElementById("dataFim").value = hoje;
     carregarResumo();
   });
 
@@ -150,10 +155,11 @@
   }
 
   function carregarResumo() {
-    const data = document.getElementById("dataSelecionada").value;
-    const dev  = document.getElementById('deviceSelect').value;
-    const url  = `https://projeto-tensao-rasp.vercel.app/api/resumo`
-             + `?data=${data}${dev ? `&device_id=${dev}` : ''}`;
+    const dataInicio = document.getElementById("dataInicio").value;
+    const dataFim = document.getElementById("dataFim").value;
+    const dev = document.getElementById('deviceSelect').value;
+    const url = `https://projeto-tensao-rasp.vercel.app/api/resumo`
+             + `?dataInicio=${dataInicio}&dataFim=${dataFim}&device_id=${dev}`;
 
     fetch(url)
       .then(res => res.json())

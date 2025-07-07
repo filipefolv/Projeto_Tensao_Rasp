@@ -3,18 +3,24 @@ import { neon } from '@neondatabase/serverless';
 export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL);
 
-  const data = req.query.data || new Date().toISOString().slice(0, 10);
-  const device_id = req.query.device_id;                // ← obrigatório
+  // Recebe os parâmetros de data, se não, define datas padrão
+  const { dataInicio, dataFim, device_id } = req.query;
 
   if (!device_id)
     return res.status(400).json({ error: 'device_id obrigatório' });
 
-  // converte data local-3 h para UTC
-  const inicio = new Date(`${data}T00:00:00-03:00`).toISOString();
-  const fim    = new Date(`${data}T23:59:59-03:00`).toISOString();
+  // Se não for passada data de início, define o valor como o dia de hoje
+  const inicio = dataInicio 
+    ? new Date(`${dataInicio}T00:00:00-03:00`).toISOString() 
+    : new Date().toISOString().slice(0, 10) + 'T00:00:00-03:00';   // Default para hoje
+  
+  // Se não for passada data de fim, define o valor como o fim do dia de hoje
+  const fim = dataFim 
+    ? new Date(`${dataFim}T23:59:59-03:00`).toISOString() 
+    : new Date().toISOString().slice(0, 10) + 'T23:59:59-03:00';    // Default para hoje
 
   try {
-    // todas as medições do dia para esse sistema
+    // Busca todos os dados entre as datas fornecidas para o dispositivo
     const dados = await sql`
       SELECT timestamp, tensao
       FROM leituras
@@ -23,7 +29,7 @@ export default async function handler(req, res) {
       ORDER BY timestamp ASC
     `;
 
-    // estatísticas gerais
+    // Estatísticas gerais (mínimo, máximo, média, horário das medições extremas)
     const [estat] = await sql`
       SELECT 
         MIN(tensao)  AS minimo,
@@ -40,7 +46,7 @@ export default async function handler(req, res) {
         AND timestamp BETWEEN ${inicio} AND ${fim}
     `;
 
-    return res.status(200).json({ dados, resumo: estat, dataSelecionada: data });
+    return res.status(200).json({ dados, resumo: estat, dataSelecionada: `${dataInicio} a ${dataFim}` });
 
   } catch (e) {
     console.error('[API /resumo] erro:', e);
