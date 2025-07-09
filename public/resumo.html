@@ -76,7 +76,8 @@
           backgroundColor: "rgba(13,110,253,0.1)",
           fill: true,
           tension: 0.2,
-          pointRadius: 0.6
+          pointRadius: 0, // Pontos não são visíveis por padrão
+          pointHoverRadius: 5 // Mostra o ponto ao passar o mouse
         }]
       },
       options: {
@@ -86,6 +87,13 @@
           intersect: false
         },
         plugins: {
+          // Plugin de diezmação para melhorar a performance com muitos dados
+          decimation: {
+            enabled: true,
+            algorithm: 'lttb', // Algoritmo que preserva o formato do gráfico
+            samples: 1000,     // Limita a exibição a 1000 pontos
+            threshold: 2000    // Ativa a otimização se houver mais de 2000 pontos
+          },
           zoom: {
             pan: {
               enabled: true,
@@ -110,10 +118,7 @@
               tooltipFormat: 'DD/MM/YYYY HH:mm:ss',
               displayFormats: {
                 hour: 'DD/MM HH:mm',
-                day: 'DD/MM/YYYY',
-                week: 'DD/MM/YYYY',
-                month: 'MM/YYYY',
-                year: 'YYYY'
+                day: 'DD/MM/YYYY'
               }
             },
             ticks: {
@@ -201,7 +206,8 @@
         const idxMax = valores.indexOf(Math.max(...valores));
         const idxMin = valores.indexOf(Math.min(...valores));
 
-        grafico.data.datasets[0].pointRadius = valores.map((_, i) => (i === idxMax || i === idxMin) ? 5 : 0.6);
+        // Destaca apenas os pontos de máximo e mínimo
+        grafico.data.datasets[0].pointRadius = valores.map((_, i) => (i === idxMax || i === idxMin) ? 5 : 0);
         grafico.data.datasets[0].pointBackgroundColor = valores.map((_, i) => {
           if (i === idxMax) return '#dc3545';
           if (i === idxMin) return '#198754';
